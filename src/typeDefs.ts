@@ -7,39 +7,41 @@ export default gql`
   extend schema
     @link(
       url: "https://specs.apollo.dev/federation/v2.0"
-      import: ["@key", "@shareable"]
+      import: ["@key", "@shareable", "@external"]
     )
 
-  type Affirmative {
-    ok: Boolean!
+  type Hop @key(fields: "id") @external {
+    id: ID!
   }
 
-  type Item @key(fields: "id") {
+  type Solve @key(fields: "id") {
     id: ID!
-    name: String
-    description: String
+    ownerId: String
+    gameId: String
+    associationsKey: String
+    hops: [Hop!]!
     createdAt: DateTime
     updatedAt: DateTime
   }
 
-  input UpdateItemInput {
-    id: String!
-    name: String
-    description: String
+  input SolveQueryInput {
+    associationsKey: String
+    ownerId: String
+    gameId: String
   }
 
-  input QueryObject {
-    ownerId: String
+  type Attempt {
+    id: ID!
+    gameId: String
+    createdAt: DateTime
   }
 
   type Query {
-    item(id: ID!): Item
-    items(query: QueryObject!): [Item]
+    solve(id: ID!): Solve
+    solves(query: SolveQueryInput!): [Solve]
   }
 
   type Mutation {
-    updateItem(input: UpdateItemInput!): Item
-    createItem(name: String, description: String): Item
-    deleteItem(id: String!): Affirmative
+    createAttempt(gameId: ID!): Attempt
   }
 `;

@@ -2,7 +2,7 @@ import { cleanEnv, str } from 'envalid';
 
 const env = cleanEnv(process.env, {
   TABLE_NAME: str({
-    desc: 'DynamoDB table name for items',
+    desc: 'DynamoDB table name for solves',
     default: 'ABJECT_FAILURE', // keep it from hard erroring if you screw up env vars
   }),
   AWS_REGION: str({ default: 'ap-southeast-2' }),

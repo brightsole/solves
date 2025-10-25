@@ -8,8 +8,9 @@ export default new Schema(
       index: { name: 'ownerId', type: 'global' },
     },
     id: { type: String, hashKey: true, required: true },
-    description: { type: String },
-    name: { type: String },
+    gameId: { type: String, required: true },
+    associationsKey: { type: String, required: true },
+    hopsIds: { type: Array, schema: [String], required: true },
   },
   { timestamps: true },
 );

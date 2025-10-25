@@ -13,6 +13,9 @@ const config: CodegenConfig = {
           DateTime: 'Date',
           JSONObject: 'Record<string, unknown>',
         },
+        mappers: {
+          Solve: '../types#DBSolve',
+        },
         federation: true,
       },
     },

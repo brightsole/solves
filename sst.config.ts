@@ -3,27 +3,32 @@
 export default $config({
   app(input) {
     return {
-      name: 'items-service',
+      name: 'solves-service',
       removal: input?.stage === 'production' ? 'retain' : 'remove',
       protect: input?.stage === 'production',
       home: 'aws',
     };
   },
   async run() {
-    const itemsTable = new sst.aws.Dynamo('Items', {
+    const queue = new sst.aws.Queue('solves-queue', { fifo: true });
+    const solvesTable = new sst.aws.Dynamo('Solves', {
       fields: {
         id: 'string',
+        gameId: 'string',
         ownerId: 'string',
+        associationsKey: 'string',
       },
       primaryIndex: { hashKey: 'id' },
       globalIndexes: {
+        gameId: { hashKey: 'gameId' },
         ownerId: { hashKey: 'ownerId' },
+        associationsKey: { hashKey: 'associationsKey' },
       },
       deletionProtection: $app.stage === 'production',
     });
 
     const api = new sst.aws.ApiGatewayV2('Api', {
-      link: [itemsTable],
+      link: [solvesTable],
     });
 
     // new sst.aws.Cron('KeepWarmCron', {
@@ -38,20 +43,20 @@ export default $config({
     //   },
     // });
 
-    // Store the API URL as a CloudFormation output for federation lookup
-    new aws.ssm.Parameter('ItemsApiUrl', {
+    new aws.ssm.Parameter('SolvesApiUrl', {
       name: `/sst/${$app.name}/${$app.stage}/api-url`,
       type: 'String',
       value: api.url,
       description: `API Gateway URL for ${$app.name} ${$app.stage}`,
     });
-    // roughly how to get the api url in fed gateway:
-    // const itemsApiUrl = await aws.ssm.getParameter({
-    //   name: `/sst/items-service/${$app.stage}/api-url`,
-    // });
-    // then you put it into the environment below
+    new aws.ssm.Parameter('SolvesQueueUrl', {
+      name: `/sst/${$app.name}/${$app.stage}/queue-url`,
+      type: 'String',
+      value: queue.url,
+      description: `SQS Queue URL for ${$app.name} ${$app.stage}`,
+    });
 
-    const functionConfig = {
+    api.route('ANY /graphql', {
       runtime: 'nodejs22.x',
       timeout: '20 seconds',
       memory: '1024 MB',
@@ -59,28 +64,28 @@ export default $config({
         format: 'esm',
       },
       environment: {
-        TABLE_NAME: itemsTable.name,
+        TABLE_NAME: solvesTable.name,
       },
-    } as const;
-
-    api.route('ANY /graphql', {
-      ...functionConfig,
       handler: 'src/graphqlHandler.handler',
     });
 
-    api.route('ANY /items', {
-      ...functionConfig,
-      handler: 'src/restHandler.handler',
-    });
-
-    api.route('ANY /items/{proxy+}', {
-      ...functionConfig,
-      handler: 'src/restHandler.handler',
+    queue.subscribe({
+      handler: 'src/queueHandler.handler',
+      runtime: 'nodejs22.x',
+      memory: '1024 MB',
+      nodejs: {
+        format: 'esm',
+      },
+      timeout: '30 seconds',
+      environment: {
+        TABLE_NAME: solvesTable.name,
+      },
     });
 
     return {
       apiUrl: api.url,
-      usersTableName: itemsTable.name,
+      queueUrl: queue.url,
+      solvesTableName: solvesTable.name,
     };
   },
 });

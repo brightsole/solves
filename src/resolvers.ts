@@ -1,35 +1,37 @@
 import { GraphQLDateTime, GraphQLJSONObject } from 'graphql-scalars';
+import { customAlphabet } from 'nanoid';
 import type { Resolvers } from './generated/graphql';
 import type { Context } from './types';
 
 const resolvers: Resolvers<Context> = {
   Query: {
-    item: async (_parent, { id }, { itemController }) =>
-      itemController.getById(id),
-    // for extra security, we could ignore the props passed in, and instead only grab items that belong to
-    // the ownerId passed in the headers. This could also be overly limiting if items aren't private
-    items: async (_parent, { query: { ownerId } }, { itemController }) =>
-      itemController.listByOwner(ownerId),
+    solve: async (_parent, { id }, { solveController }) =>
+      solveController.getById(id),
+
+    solves: async (_parent, { query }, { solveController }) =>
+      solveController.query(query),
   },
 
   Mutation: {
-    createItem: async (
-      _parent,
-      { name, description },
-      { ownerId, itemController },
-    ) => itemController.create({ name, description }, ownerId),
+    createAttempt: async (_parent, { gameId }) => {
+      // attempts, being sneaky, get hisk: snake language ids
+      const nano = customAlphabet('hisSk_-~', 24);
+      const id = `att_${nano()}`;
 
-    updateItem: async (_parent, { input }, { ownerId, itemController }) =>
-      itemController.update(input, ownerId),
-
-    deleteItem: async (_parent, { id }, { ownerId, itemController }) =>
-      itemController.remove(id, ownerId),
+      return {
+        id,
+        gameId,
+        createdAt: new Date(),
+      };
+    },
   },
 
-  Item: {
-    // for finding out the info of the other items in the system
-    __resolveReference: async ({ id }, { itemController }) =>
-      itemController.getById(id),
+  Solve: {
+    __resolveReference: async ({ id }, { solveController }) =>
+      solveController.getById(id),
+
+    hops: async (parent, _args, _context) =>
+      parent.hopsIds.map((id: string) => ({ __typename: 'Hop', id })),
   },
 
   DateTime: GraphQLDateTime,

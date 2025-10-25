@@ -7,55 +7,51 @@ import getGraphqlServer from '../test/getGraphqlServer';
 // correct low level unit testing should be done on the resolver/util level
 
 describe('Resolver full path', () => {
-  it('creates an item without error', async () => {
+  it('queries solves without error', async () => {
     const server = getGraphqlServer();
 
-    const createItemMutation = gql`
-      mutation CreateItem($name: String, $description: String) {
-        createItem(name: $name, description: $description) {
+    const solvesQuery = gql`
+      query Solves($query: SolveQueryInput!) {
+        solves(query: $query) {
           id
-          name
-          description
+          ownerId
+          gameId
         }
       }
     `;
 
-    const create = jest.fn();
-    const itemController = {
-      create,
+    const query = jest.fn();
+    const solveController = {
+      query,
       getById: jest.fn(),
-      listByOwner: jest.fn(),
-      update: jest.fn(),
-      remove: jest.fn(),
+      create: jest.fn(),
     };
 
     const ownerId = 'that guy who makes things';
 
-    const name = 'the diner of despair';
-    const description =
-      'a horrible place where the clientelle go to get bitten, not a bite';
-
-    create.mockResolvedValueOnce({
-      id: nanoid(),
-      name,
-      description,
-      ownerId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    query.mockResolvedValueOnce([
+      {
+        id: nanoid(),
+        ownerId,
+        gameId: 'game123',
+        associationsKey: 'assoc123',
+        hopsIds: ['hop1', 'hop2'],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
 
     const { body } = await server.executeOperation(
       {
-        query: createItemMutation,
+        query: solvesQuery,
         variables: {
-          name,
-          description,
+          query: { ownerId },
         },
       },
       {
         contextValue: {
           ownerId,
-          itemController,
+          solveController,
         },
       },
     );
@@ -68,8 +64,14 @@ describe('Resolver full path', () => {
 
     expect(singleResult.errors).toBeUndefined();
     expect(singleResult.data).toEqual({
-      createItem: { id: expect.any(String), name, description },
+      solves: [
+        {
+          id: expect.any(String),
+          ownerId,
+          gameId: 'game123',
+        },
+      ],
     });
-    expect(create).toHaveBeenCalledWith({ name, description }, ownerId);
+    expect(query).toHaveBeenCalledWith({ ownerId });
   });
 });
