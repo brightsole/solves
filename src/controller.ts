@@ -1,7 +1,6 @@
 import { model } from 'dynamoose';
-import { nanoid } from 'nanoid';
 import { LRUCache } from 'lru-cache';
-import type { DBSolve, ModelType } from './types';
+import type { DBSolve, ModelType, Hop, Context } from './types';
 import type { SolveQueryInput } from './generated/graphql';
 import SolveSchema from './Solve.schema';
 import env from './env';
@@ -50,13 +49,38 @@ export const createSolveController = (SolveModel: ModelType) => ({
     return results;
   },
 
-  create: async (input: Partial<DBSolve>, ownerId?: string) => {
-    if (!ownerId) throw new Error('Unauthorized');
+  create: async (input: DBSolve, { ownerId }: Context) => {
+    if (!input.ownerId || !input.id || !input.gameId) {
+      throw new Error('Unauthorized');
+    }
+
+    // TODO: Validate game exists
+    // await fetch(`${env.gamesApiUrl}/games/${input.gameId}`);
+
+    const hopsData = await fetch(
+      `${env.hopsApiUrl}/hops?attemptId=${input.id}`,
+    );
+    const hops = await hopsData.json();
+
+    // TODO: Sort hop path properly
+
+    // smoosh all hop associations together into one
+    // and store it as duplicated data on the solve
+    const aggregateAssociationsKey = [
+      ...new Set(
+        hops
+          .map((hop: Hop) => hop.associationsKey)
+          .join('|')
+          .split('|'),
+      ),
+    ].join('|');
+
     const solve = await SolveModel.create(
       {
-        id: nanoid(),
-        ownerId,
         ...input,
+        id: `${input.gameId}-${input.ownerId}-${input.id}`,
+        ownerId,
+        associationsKey: aggregateAssociationsKey,
       },
       {
         overwrite: false,

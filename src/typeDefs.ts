@@ -13,11 +13,14 @@ export default gql`
   type Hop @key(fields: "id") @external {
     id: ID!
   }
+  type Game @key(fields: "id") @external {
+    id: ID!
+  }
 
   type Solve @key(fields: "id") {
     id: ID!
-    ownerId: String
-    gameId: String
+    ownerId: String # TODO: change to User once users is done
+    game: Game
     associationsKey: String
     hops: [Hop!]!
     createdAt: DateTime
@@ -30,18 +33,13 @@ export default gql`
     gameId: String
   }
 
-  type Attempt {
-    id: ID!
-    gameId: String
-    createdAt: DateTime
-  }
-
   type Query {
     solve(id: ID!): Solve
     solves(query: SolveQueryInput!): [Solve]
   }
 
   type Mutation {
-    createAttempt(gameId: ID!): Attempt
+    startAttempt(gameId: ID!, previousAttemptId: ID): Solve
+    attemptHop(word: ID!): Solve
   }
 `;

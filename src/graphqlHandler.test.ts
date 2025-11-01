@@ -15,7 +15,12 @@ describe('Resolver full path', () => {
         solves(query: $query) {
           id
           ownerId
-          gameId
+          game {
+            id
+          }
+          associationsKey
+          createdAt
+          updatedAt
         }
       }
     `;
@@ -68,7 +73,12 @@ describe('Resolver full path', () => {
         {
           id: expect.any(String),
           ownerId,
-          gameId: 'game123',
+          game: {
+            id: 'game123',
+          },
+          associationsKey: 'assoc123',
+          createdAt: expect.any(Date),
+          updatedAt: expect.any(Date),
         },
       ],
     });

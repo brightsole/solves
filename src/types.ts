@@ -30,3 +30,9 @@ export type Context = {
   ownerId?: string;
   event: unknown;
 };
+
+export type Hop = {
+  id: string;
+  associationsKey: string;
+  createdAt: string;
+};

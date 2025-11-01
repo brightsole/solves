@@ -1,12 +1,16 @@
-import type { ModelType, DBSolve } from './types';
+import type { ModelType, DBSolve, Context } from './types';
 import { Query as QueryType } from 'dynamoose/dist/ItemRetriever';
 
 type SolveModelMock = jest.Mocked<ModelType & QueryType<DBSolve>>;
+
+const mockFetch = jest.fn() as jest.Mock;
+global.fetch = mockFetch;
 
 let createSolveController: (typeof import('./controller'))['createSolveController'];
 
 beforeEach(async () => {
   jest.resetModules();
+  mockFetch.mockClear();
   ({ createSolveController } = await import('./controller'));
 });
 
@@ -116,7 +120,7 @@ describe('solve controller', () => {
     });
   });
 
-  describe('.create(input, ownerId): Solve', () => {
+  describe('.create(input, context): Solve', () => {
     it('creates a solve', async () => {
       const newSolve = {
         id: 'new-solve',
@@ -130,24 +134,50 @@ describe('solve controller', () => {
         create: jest.fn().mockResolvedValue(newSolve),
       });
 
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/games/')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({ id: 'game-456' }),
+          });
+        }
+        if (url.includes('/hops')) {
+          return Promise.resolve({
+            json: () =>
+              Promise.resolve([
+                {
+                  id: 'hop1',
+                  associationsKey: 'key1',
+                  createdAt: '2024-01-01',
+                },
+                {
+                  id: 'hop2',
+                  associationsKey: 'key2',
+                  createdAt: '2024-01-02',
+                },
+              ]),
+          });
+        }
+        return Promise.resolve({ json: () => Promise.resolve({}) });
+      });
+
       const solve = await createSolveController(SolveModel).create(
         {
-          gameId: 'game-456',
-          associationsKey: 'assoc-101',
-          hopsIds: ['hop1', 'hop2'],
-        },
-        'user-123',
-      );
-
-      expect(solve).toEqual(newSolve);
-      expect(SolveModel.create).toHaveBeenCalledWith(
-        {
-          id: expect.any(String),
+          id: 'new-solve',
           ownerId: 'user-123',
           gameId: 'game-456',
           associationsKey: 'assoc-101',
           hopsIds: ['hop1', 'hop2'],
-        },
+        } as unknown as DBSolve,
+        { ownerId: 'user-123' } as Context,
+      );
+
+      expect(solve.ownerId).toEqual('user-123');
+      expect(solve.gameId).toEqual('game-456');
+      expect(SolveModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ownerId: 'user-123',
+          gameId: 'game-456',
+        }),
         { overwrite: false },
       );
     });
@@ -156,11 +186,14 @@ describe('solve controller', () => {
       const SolveModel = createSolveModelMock();
 
       await expect(
-        createSolveController(SolveModel).create({
-          gameId: 'game-456',
-          associationsKey: 'assoc-101',
-          hopsIds: ['hop1', 'hop2'],
-        }),
+        createSolveController(SolveModel).create(
+          {
+            gameId: 'game-456',
+            associationsKey: 'assoc-101',
+            hopsIds: ['hop1', 'hop2'],
+          } as unknown as DBSolve,
+          {} as Context,
+        ),
       ).rejects.toThrow('Unauthorized');
     });
   });

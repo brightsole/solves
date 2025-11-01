@@ -10,7 +10,6 @@ export default $config({
     };
   },
   async run() {
-    const queue = new sst.aws.Queue('solves-queue', { fifo: true });
     const solvesTable = new sst.aws.Dynamo('Solves', {
       fields: {
         id: 'string',
@@ -49,11 +48,11 @@ export default $config({
       value: api.url,
       description: `API Gateway URL for ${$app.name} ${$app.stage}`,
     });
-    new aws.ssm.Parameter('SolvesQueueUrl', {
-      name: `/sst/${$app.name}/${$app.stage}/queue-url`,
-      type: 'String',
-      value: queue.url,
-      description: `SQS Queue URL for ${$app.name} ${$app.stage}`,
+    const hopsApiUrl = await aws.ssm.getParameter({
+      name: `/sst/words-service/${$app.stage}/api-url`,
+    });
+    const gamesApiUrl = await aws.ssm.getParameter({
+      name: `/sst/games-service/${$app.stage}/api-url`,
     });
 
     api.route('ANY /graphql', {
@@ -65,26 +64,17 @@ export default $config({
       },
       environment: {
         TABLE_NAME: solvesTable.name,
+        HOPS_API_URL: hopsApiUrl.value,
+        GAMES_API_URL: gamesApiUrl.value,
       },
       handler: 'src/graphqlHandler.handler',
     });
 
-    queue.subscribe({
-      handler: 'src/queueHandler.handler',
-      runtime: 'nodejs22.x',
-      memory: '1024 MB',
-      nodejs: {
-        format: 'esm',
-      },
-      timeout: '30 seconds',
-      environment: {
-        TABLE_NAME: solvesTable.name,
-      },
-    });
+    // no rest routes; this is all for the users
 
     return {
-      apiUrl: api.url,
-      queueUrl: queue.url,
+      apiUrl: api.url.apply((url) => `${url}/graphql`),
+      queueUrl: api.url.apply((url) => `${url}/solves`),
       solvesTableName: solvesTable.name,
     };
   },

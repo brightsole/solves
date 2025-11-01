@@ -1,7 +1,7 @@
 import { startController } from './controller';
 import resolvers from './resolvers';
 import type { DBSolve } from './types';
-import type { Attempt } from './generated/graphql';
+import type { Solve } from './generated/graphql';
 
 const defaultSolve = {
   id: 'solve-123',
@@ -108,7 +108,7 @@ describe('Resolvers', () => {
   describe('Mutation', () => {
     it('creates an attempt with generated id', async () => {
       const attempt = await callResolver(
-        resolvers.Mutation?.createAttempt,
+        resolvers.Mutation?.startAttempt,
         { gameId: 'game-456' },
         {
           ownerId: 'user-123',
@@ -118,54 +118,85 @@ describe('Resolvers', () => {
       );
 
       expect(attempt).toEqual({
-        id: expect.stringMatching(/^att_[hisSk_~-]{24}$/),
+        id: expect.stringMatching(/^[hisSk_~-]{24}$/),
         gameId: 'game-456',
+        ownerId: 'user-123',
+        hopsIds: [],
+        associationsKey: '',
         createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
       });
     });
 
     it('creates an attempt without gameId when not provided', async () => {
       const attempt = await callResolver(
-        resolvers.Mutation?.createAttempt,
-        {},
-        { solveController: createSolveControllerMock(), event: {} },
+        resolvers.Mutation?.startAttempt,
+        { gameId: undefined },
+        {
+          ownerId: 'user-456',
+          solveController: createSolveControllerMock(),
+          event: {},
+        },
       );
 
       expect(attempt).toEqual({
-        id: expect.stringMatching(/^att_[hisSk_~-]{24}$/),
+        id: expect.stringMatching(/^[hisSk_~-]{24}$/),
         gameId: undefined,
+        ownerId: 'user-456',
+        hopsIds: [],
+        associationsKey: '',
         createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
       });
     });
 
     it('generates unique ids for each attempt', async () => {
       const attempt1 = (await callResolver(
-        resolvers.Mutation?.createAttempt,
+        resolvers.Mutation?.startAttempt,
         { gameId: 'game-1' },
         {
           ownerId: 'user-1',
           solveController: createSolveControllerMock(),
           event: {},
         },
-      )) as Attempt;
+      )) as Solve;
 
       const attempt2 = (await callResolver(
-        resolvers.Mutation?.createAttempt,
+        resolvers.Mutation?.startAttempt,
         { gameId: 'game-2' },
         {
           ownerId: 'user-2',
           solveController: createSolveControllerMock(),
           event: {},
         },
-      )) as Attempt;
+      )) as Solve;
 
       expect(attempt1.id).not.toEqual(attempt2.id);
-      expect(attempt1.id).toMatch(/^att_[hisSk_~-]{24}$/);
-      expect(attempt2.id).toMatch(/^att_[hisSk_~-]{24}$/);
+      expect(attempt1.id).toMatch(/^[hisSk_~-]{24}$/);
+      expect(attempt2.id).toMatch(/^[hisSk_~-]{24}$/);
     });
   });
 
   describe('Solve', () => {
+    it('resolves game reference from gameId', async () => {
+      const solve = {
+        ...defaultSolve,
+        gameId: 'game-789',
+      };
+
+      const game = await callResolver(
+        resolvers.Solve?.game,
+        {},
+        { solveController: createSolveControllerMock(), event: {} },
+        solve,
+      );
+
+      expect(game).toEqual({
+        __typename: 'Game',
+        id: 'game-789',
+      });
+    });
+
     it('resolves hops from hopsIds', async () => {
       const solve = {
         ...defaultSolve,
