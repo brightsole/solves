@@ -77,8 +77,7 @@ export default $config({
     // no rest routes; this is all for the users
 
     return {
-      apiUrl: api.url.apply((url) => `${url}/graphql`),
-      queueUrl: api.url.apply((url) => `${url}/solves`),
+      graphUrl: api.url.apply((url) => `${url}/graphql`),
       solvesTableName: solvesTable.name,
     };
   },

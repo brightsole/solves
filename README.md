@@ -1,12 +1,10 @@
 # Solves
 
+[![Dependabot Updates](https://github.com/brightsole/solves/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/brightsole/solves/actions/workflows/dependabot/dependabot-updates) [![Auto merge basic check](https://github.com/brightsole/solves/actions/workflows/test.yml/badge.svg)](https://github.com/brightsole/solves/actions/workflows/test.yml) [![Deploy preview environment](https://github.com/brightsole/solves/actions/workflows/deploy-preview.yml/badge.svg)](https://github.com/brightsole/solves/actions/workflows/deploy-preview.yml)
+
+[development](https://vrvnzi5szg.execute-api.ap-southeast-2.amazonaws.com/graphql)
+
 ### TODO
-- think of a clever way to get the minimalist `associationsKey` from all `associationsKey`s on the underlying hop records
-  - decide if hops should do it, even if it means hops will have to fetch alot of hops
-    - this is _probably_ the right call
 - create postman collection for it
-- create `startNewAttempt` that takes old id and runs batch delete on old `hops`
-  - and returns a new attempt
-- swallow errors on solves that have the exact same content as previous solves
-  - obviously don't save the same shit twice
-  - think of a way to instantly validate that "oops they did it again"
+- deploy to prod
+- lock it down
