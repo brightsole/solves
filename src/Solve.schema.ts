@@ -20,6 +20,12 @@ export default new Schema(
       index: { name: 'associationsKey', type: 'global' },
     },
     hopsIds: { type: Array, schema: [String], required: true },
+    isFinished: { type: Boolean, required: true, default: true },
+    compositeKey: {
+      type: String,
+      required: true,
+      index: { name: 'compositeKey', type: 'global' },
+    },
   },
   { timestamps: true },
 );

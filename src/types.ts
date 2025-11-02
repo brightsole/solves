@@ -19,7 +19,10 @@ export type DBSolve = DynamooseItem & {
   ownerId: string;
   gameId: string;
   associationsKey: string;
+  length: number;
+  isFinished: boolean;
   hopsIds: string[];
+  compositeKey: string;
   createdAt?: Date | null;
   updatedAt?: Date | null;
 };
@@ -27,7 +30,9 @@ export type ModelType = Model<DBSolve>;
 
 export type Context = {
   solveController: ReturnType<typeof createSolveController>;
+  attemptId?: string;
   ownerId?: string;
+  gameId?: string;
   event: unknown;
 };
 

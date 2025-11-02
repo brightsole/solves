@@ -7,11 +7,15 @@ export const setContext: ContextFunction<
   BaseContext
 > = async ({ event, context }): Promise<Context> => {
   const userId = event.headers['x-user-id'];
+  const gameId = event.headers['x-game-id'];
+  const attemptId = event.headers['x-attempt-id'];
   const solveController = startController();
 
   return {
     ...context,
     ownerId: userId,
+    gameId,
+    attemptId,
     event,
     solveController,
   };

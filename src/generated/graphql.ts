@@ -70,6 +70,8 @@ export type Solve = {
   game?: Maybe<Game>;
   hops: Array<Hop>;
   id: Scalars['ID']['output'];
+  isFinished?: Maybe<Scalars['Boolean']['output']>;
+  length?: Maybe<Scalars['Int']['output']>;
   ownerId?: Maybe<Scalars['String']['output']>;
   updatedAt?: Maybe<Scalars['DateTime']['output']>;
 };
@@ -191,8 +193,9 @@ export type ResolversTypes = {
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Solve: ResolverTypeWrapper<DBSolve>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
-  SolveQueryInput: SolveQueryInput;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
+  Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  SolveQueryInput: SolveQueryInput;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -206,8 +209,9 @@ export type ResolversParentTypes = {
   Query: Record<PropertyKey, never>;
   Solve: DBSolve;
   String: Scalars['String']['output'];
-  SolveQueryInput: SolveQueryInput;
   Boolean: Scalars['Boolean']['output'];
+  Int: Scalars['Int']['output'];
+  SolveQueryInput: SolveQueryInput;
 };
 
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
@@ -235,6 +239,8 @@ export type SolveResolvers<ContextType = Context, ParentType extends ResolversPa
   game?: Resolver<Maybe<ResolversTypes['Game']>, ParentType, ContextType>;
   hops?: Resolver<Array<ResolversTypes['Hop']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  isFinished?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  length?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   ownerId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   updatedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
 };

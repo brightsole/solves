@@ -23,6 +23,8 @@ export default gql`
     game: Game
     associationsKey: String
     hops: [Hop!]!
+    isFinished: Boolean
+    length: Int
     createdAt: DateTime
     updatedAt: DateTime
   }

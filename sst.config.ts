@@ -13,14 +13,18 @@ export default $config({
     const solvesTable = new sst.aws.Dynamo('Solves', {
       fields: {
         id: 'string',
+        length: 'number',
         gameId: 'string',
         ownerId: 'string',
+        compositeKey: 'string',
         associationsKey: 'string',
       },
       primaryIndex: { hashKey: 'id' },
       globalIndexes: {
         gameId: { hashKey: 'gameId' },
+        length: { hashKey: 'length' },
         ownerId: { hashKey: 'ownerId' },
+        compositeKey: { hashKey: 'compositeKey' },
         associationsKey: { hashKey: 'associationsKey' },
       },
       deletionProtection: $app.stage === 'production',

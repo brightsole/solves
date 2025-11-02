@@ -12,6 +12,12 @@ const queryCache = new LRUCache<string, DBSolve[]>({
   max: 100,
 });
 
+type CreateSolveInput = {
+  hops: Hop[];
+  game: { id: string };
+  attemptId: string;
+};
+
 export const createSolveController = (SolveModel: ModelType) => ({
   getById: async (id: string) => {
     const cachedSolve = cache.get(id);
@@ -49,20 +55,30 @@ export const createSolveController = (SolveModel: ModelType) => ({
     return results;
   },
 
-  create: async (input: DBSolve, { ownerId }: Context) => {
-    if (!input.ownerId || !input.id || !input.gameId) {
-      throw new Error('Unauthorized');
+  create: async (
+    { hops, game, attemptId }: CreateSolveInput,
+    { ownerId }: Context,
+  ) => {
+    const sortedHopIds = hops
+      .map((hop) => hop.id)
+      .sort()
+      .join(',');
+    const compositeKey = `${ownerId}|${game?.id}|${sortedHopIds}`;
+
+    const existingSolves = await SolveModel.query('compositeKey')
+      .eq(compositeKey)
+      .using('compositeKey')
+      .exec();
+
+    if (existingSolves.length > 0) {
+      // Delete hops for this attempt since it's a duplicate
+      await fetch(`${env.hopsApiUrl}/hops?attemptId=${attemptId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      throw new Error('Duplicate solve detected');
     }
-
-    // TODO: Validate game exists
-    // await fetch(`${env.gamesApiUrl}/games/${input.gameId}`);
-
-    const hopsData = await fetch(
-      `${env.hopsApiUrl}/hops?attemptId=${input.id}`,
-    );
-    const hops = await hopsData.json();
-
-    // TODO: Sort hop path properly
 
     // smoosh all hop associations together into one
     // and store it as duplicated data on the solve
@@ -77,10 +93,13 @@ export const createSolveController = (SolveModel: ModelType) => ({
 
     const solve = await SolveModel.create(
       {
-        ...input,
-        id: `${input.gameId}-${input.ownerId}-${input.id}`,
+        id: attemptId,
+        gameId: game?.id,
+        hopsIds: hops.map((hop: Hop) => hop.id),
+        length: hops.length - 1,
         ownerId,
         associationsKey: aggregateAssociationsKey,
+        compositeKey,
       },
       {
         overwrite: false,

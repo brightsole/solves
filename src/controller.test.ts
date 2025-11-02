@@ -123,78 +123,180 @@ describe('solve controller', () => {
   describe('.create(input, context): Solve', () => {
     it('creates a solve', async () => {
       const newSolve = {
-        id: 'new-solve',
+        id: 'attempt-123',
         ownerId: 'user-123',
         gameId: 'game-456',
-        associationsKey: 'assoc-101',
+        associationsKey: 'key1|key2',
         hopsIds: ['hop1', 'hop2'],
+        length: 1,
+        compositeKey: 'user-123|game-456|hop1,hop2',
       };
 
       const SolveModel = createSolveModelMock({
+        query: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            using: jest.fn().mockReturnValue({
+              exec: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
         create: jest.fn().mockResolvedValue(newSolve),
-      });
-
-      mockFetch.mockImplementation((url: string) => {
-        if (url.includes('/games/')) {
-          return Promise.resolve({
-            json: () => Promise.resolve({ id: 'game-456' }),
-          });
-        }
-        if (url.includes('/hops')) {
-          return Promise.resolve({
-            json: () =>
-              Promise.resolve([
-                {
-                  id: 'hop1',
-                  associationsKey: 'key1',
-                  createdAt: '2024-01-01',
-                },
-                {
-                  id: 'hop2',
-                  associationsKey: 'key2',
-                  createdAt: '2024-01-02',
-                },
-              ]),
-          });
-        }
-        return Promise.resolve({ json: () => Promise.resolve({}) });
       });
 
       const solve = await createSolveController(SolveModel).create(
         {
-          id: 'new-solve',
-          ownerId: 'user-123',
-          gameId: 'game-456',
-          associationsKey: 'assoc-101',
-          hopsIds: ['hop1', 'hop2'],
-        } as unknown as DBSolve,
+          attemptId: 'attempt-123',
+          game: { id: 'game-456' },
+          hops: [
+            { id: 'hop1', associationsKey: 'key1', createdAt: '2024-01-01' },
+            { id: 'hop2', associationsKey: 'key2', createdAt: '2024-01-02' },
+          ],
+        },
         { ownerId: 'user-123' } as Context,
       );
 
       expect(solve.ownerId).toEqual('user-123');
       expect(solve.gameId).toEqual('game-456');
+      expect(solve.associationsKey).toEqual('key1|key2');
+      expect(solve.length).toEqual(1);
+      expect(solve.compositeKey).toEqual('user-123|game-456|hop1,hop2');
+      expect(SolveModel.create).toHaveBeenCalledWith(
+        {
+          id: 'attempt-123',
+          gameId: 'game-456',
+          hopsIds: ['hop1', 'hop2'],
+          length: 1,
+          ownerId: 'user-123',
+          associationsKey: 'key1|key2',
+          compositeKey: 'user-123|game-456|hop1,hop2',
+        },
+        { overwrite: false },
+      );
+    });
+
+    it('aggregates associations keys from multiple hops', async () => {
+      const SolveModel = createSolveModelMock({
+        query: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            using: jest.fn().mockReturnValue({
+              exec: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+        create: jest.fn().mockResolvedValue({
+          id: 'attempt-456',
+          associationsKey: 'key1|key2|key3',
+        }),
+      });
+
+      await createSolveController(SolveModel).create(
+        {
+          attemptId: 'attempt-456',
+          game: { id: 'game-789' },
+          hops: [
+            {
+              id: 'hop1',
+              associationsKey: 'key1|key2',
+              createdAt: '2024-01-01',
+            },
+            {
+              id: 'hop2',
+              associationsKey: 'key2|key3',
+              createdAt: '2024-01-02',
+            },
+          ],
+        },
+        { ownerId: 'user-456' } as Context,
+      );
+
       expect(SolveModel.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          ownerId: 'user-123',
-          gameId: 'game-456',
+          associationsKey: 'key1|key2|key3',
         }),
         { overwrite: false },
       );
     });
 
-    it('throws unauthorized when creating without ownerId', async () => {
-      const SolveModel = createSolveModelMock();
+    it('throws error and deletes hops when duplicate solve is detected', async () => {
+      const existingSolve = {
+        id: 'existing-123',
+        ownerId: 'user-123',
+        gameId: 'game-456',
+        compositeKey: 'user-123|game-456|hop1,hop2',
+      };
+
+      const SolveModel = createSolveModelMock({
+        query: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            using: jest.fn().mockReturnValue({
+              exec: jest.fn().mockResolvedValue([existingSolve]),
+            }),
+          }),
+        }),
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      } as Response);
 
       await expect(
         createSolveController(SolveModel).create(
           {
-            gameId: 'game-456',
-            associationsKey: 'assoc-101',
-            hopsIds: ['hop1', 'hop2'],
-          } as unknown as DBSolve,
-          {} as Context,
+            attemptId: 'attempt-789',
+            game: { id: 'game-456' },
+            hops: [
+              { id: 'hop1', associationsKey: 'key1', createdAt: '2024-01-01' },
+              { id: 'hop2', associationsKey: 'key2', createdAt: '2024-01-02' },
+            ],
+          },
+          { ownerId: 'user-123' } as Context,
         ),
-      ).rejects.toThrow('Unauthorized');
+      ).rejects.toThrow('Duplicate solve detected');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/hops?attemptId=attempt-789'),
+        expect.objectContaining({
+          method: 'DELETE',
+        }),
+      );
+      expect(SolveModel.create).not.toHaveBeenCalled();
+    });
+
+    it('sorts hop IDs consistently for composite key', async () => {
+      const SolveModel = createSolveModelMock({
+        query: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            using: jest.fn().mockReturnValue({
+              exec: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+        create: jest.fn().mockResolvedValue({
+          id: 'attempt-999',
+          compositeKey: 'user-999|game-999|hop1,hop2,hop3',
+        }),
+      });
+
+      await createSolveController(SolveModel).create(
+        {
+          attemptId: 'attempt-999',
+          game: { id: 'game-999' },
+          hops: [
+            { id: 'hop3', associationsKey: 'key3', createdAt: '2024-01-03' },
+            { id: 'hop1', associationsKey: 'key1', createdAt: '2024-01-01' },
+            { id: 'hop2', associationsKey: 'key2', createdAt: '2024-01-02' },
+          ],
+        },
+        { ownerId: 'user-999' } as Context,
+      );
+
+      expect(SolveModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          compositeKey: 'user-999|game-999|hop1,hop2,hop3',
+        }),
+        { overwrite: false },
+      );
     });
   });
 });
