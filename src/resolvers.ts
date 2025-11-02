@@ -3,6 +3,7 @@ import { customAlphabet } from 'nanoid';
 import type { Resolvers } from './generated/graphql';
 import type { Context, DBSolve } from './types';
 import env from './env';
+import { findEdges } from './edgeFinder';
 
 const resolvers: Resolvers<Context> = {
   Query: {
@@ -45,8 +46,85 @@ const resolvers: Resolvers<Context> = {
       // gql expects a whole load of db shit, but attempts live in memory
     },
 
-    // attemptHop: (_parent, { word }, { solveController, attemptId, ownerId }) => {
-    // }
+    attemptHop: async (
+      _parent,
+      { word },
+      { solveController, ownerId, gameId, attemptId },
+    ) => {
+      if (!ownerId || !gameId || !attemptId) {
+        throw new Error('Missing required context');
+      }
+
+      const hopsResponse = await fetch(
+        `${env.hopsApiUrl}/hops?attemptId=${attemptId}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+      const hops = await hopsResponse.json();
+      const gameResponse = await fetch(`${env.gamesApiUrl}/games/${gameId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const game = await gameResponse.json();
+
+      const edges = findEdges(hops, game);
+      const hopResults = await Promise.allSettled(
+        edges.map((edge) =>
+          fetch(`${env.hopsApiUrl}/hops`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-attempt-id': attemptId,
+              'x-game-id': gameId,
+              'x-owner-id': ownerId,
+            },
+            body: JSON.stringify({ from: edge, to: word }),
+          }),
+        ),
+      );
+
+      const successfulResponses = hopResults.filter(
+        (result) => result.status === 'fulfilled' && result.value.ok,
+      );
+
+      if (successfulResponses.length === 0) {
+        throw new Error('No valid hops found');
+      }
+
+      // Parse JSON from all successful responses
+      const successfulHops = await Promise.all(
+        successfulResponses.map((result) =>
+          (result as PromiseFulfilledResult<Response>).value.json(),
+        ),
+      );
+
+      const allHops = [...hops, ...successfulHops];
+
+      const newEdges = findEdges(allHops, game);
+
+      if (newEdges.length === 0) {
+        return solveController.create(
+          { hops: allHops, game, attemptId },
+          { ownerId, gameId, attemptId },
+        );
+      }
+
+      // Return fake in-memory attempt record
+      return {
+        id: attemptId,
+        gameId,
+        ownerId,
+        hopsIds: allHops.map((hop) => hop.id),
+        associationsKey: allHops
+          .map((hop) => hop.associationsKey)
+          .filter(Boolean)
+          .join('|'),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as unknown as DBSolve;
+    },
   },
 
   Solve: {

@@ -57,7 +57,7 @@ export const createSolveController = (SolveModel: ModelType) => ({
 
   create: async (
     { hops, game, attemptId }: CreateSolveInput,
-    { ownerId }: Context,
+    { ownerId }: Partial<Context>,
   ) => {
     const sortedHopIds = hops
       .map((hop) => hop.id)

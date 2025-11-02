@@ -38,6 +38,14 @@ export type Context = {
 
 export type Hop = {
   id: string;
+  from?: string;
+  to?: string;
+  linkKey?: string;
   associationsKey: string;
   createdAt: string;
+};
+
+export type Game = {
+  id: string;
+  words: string[];
 };
