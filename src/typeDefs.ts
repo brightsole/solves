@@ -10,10 +10,10 @@ export default gql`
       import: ["@key", "@shareable", "@external"]
     )
 
-  type Hop @key(fields: "id") @external {
+  type Hop @key(fields: "id") {
     id: ID!
   }
-  type Game @key(fields: "id") @external {
+  type Game @key(fields: "id") {
     id: ID!
   }
 
