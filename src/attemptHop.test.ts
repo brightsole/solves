@@ -380,6 +380,8 @@ describe('attemptHop resolver', () => {
           'x-attempt-id': mockAttemptId,
           'x-game-id': mockGameId,
           'x-owner-id': mockOwnerId,
+          [process.env.INTERNAL_SECRET_HEADER_NAME!]:
+            process.env.INTERNAL_SECRET_HEADER_VALUE!,
         }),
       );
     });

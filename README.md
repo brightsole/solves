@@ -48,4 +48,4 @@
 ### TODO
 - create postman collection for it
 - deploy to prod
-- lock it down
+- would be really nice to tell the queries/mutations if this was a cold start

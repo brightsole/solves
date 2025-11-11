@@ -30,6 +30,10 @@ export default $config({
       deletionProtection: $app.stage === 'production',
     });
 
+    const internalAuth = await aws.secretsmanager.getSecretVersionOutput({
+      secretId: `jumpingbeen/${$app.stage}/internal-lockdown`,
+    });
+
     const api = new sst.aws.ApiGatewayV2('Api', {
       link: [solvesTable],
     });
@@ -59,18 +63,30 @@ export default $config({
       name: `/sst/games-service/${$app.stage}/api-url`,
     });
 
-    api.route('ANY /graphql', {
-      runtime: 'nodejs22.x',
-      timeout: '20 seconds',
-      memory: '1024 MB',
+    const authSecrets = internalAuth.secretString.apply((s) => JSON.parse(s!));
+
+    const functionConfig = {
+      runtime: 'nodejs22.x' as const,
+      timeout: '20 seconds' as const,
+      memory: '1024 MB' as const,
       nodejs: {
-        format: 'esm',
+        format: 'esm' as const,
       },
       environment: {
         TABLE_NAME: solvesTable.name,
         HOPS_API_URL: hopsApiUrl.value,
         GAMES_API_URL: gamesApiUrl.value,
+        INTERNAL_SECRET_HEADER_NAME: authSecrets.apply(
+          (v) => v.INTERNAL_SECRET_HEADER_NAME,
+        ),
+        INTERNAL_SECRET_HEADER_VALUE: authSecrets.apply(
+          (v) => v.INTERNAL_SECRET_HEADER_VALUE,
+        ),
       },
+    };
+
+    api.route('ANY /graphql', {
+      ...functionConfig,
       handler: 'src/graphqlHandler.handler',
     });
 

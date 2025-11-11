@@ -74,7 +74,10 @@ export const createSolveController = (SolveModel: ModelType) => ({
       // Delete hops for this attempt since it's a duplicate
       await fetch(`${env.hopsApiUrl}/hops?attemptId=${attemptId}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [env.authHeaderName]: env.authHeaderValue,
+        },
       });
 
       throw new Error('Duplicate solve detected');

@@ -16,6 +16,12 @@ const env = cleanEnv(process.env, {
     choices: ['development', 'test', 'production', 'staging'],
     default: 'development',
   }),
+  INTERNAL_SECRET_HEADER_NAME: str({
+    desc: 'header name for locking the service to only inter-service & admin access',
+  }),
+  INTERNAL_SECRET_HEADER_VALUE: str({
+    desc: 'header value for locking the service to only inter-service & admin access',
+  }),
 });
 
 export default {
@@ -24,4 +30,6 @@ export default {
   hopsApiUrl: env.HOPS_API_URL,
   gamesApiUrl: env.GAMES_API_URL,
   isProduction: env.NODE_ENV === 'production',
+  authHeaderName: env.INTERNAL_SECRET_HEADER_NAME,
+  authHeaderValue: env.INTERNAL_SECRET_HEADER_VALUE,
 };

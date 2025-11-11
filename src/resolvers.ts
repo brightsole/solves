@@ -30,7 +30,10 @@ const resolvers: Resolvers<Context> = {
         // If there is a previous attempt, we can clean old hops
         await fetch(`${env.hopsApiUrl}/hops?attemptId=${previousAttemptId}`, {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            [env.authHeaderName]: env.authHeaderValue,
+          },
         });
       }
 
@@ -59,13 +62,19 @@ const resolvers: Resolvers<Context> = {
         `${env.hopsApiUrl}/hops?attemptId=${attemptId}`,
         {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            [env.authHeaderName]: env.authHeaderValue,
+          },
         },
       );
       const hops = await hopsResponse.json();
       const gameResponse = await fetch(`${env.gamesApiUrl}/games/${gameId}`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          [env.authHeaderName]: env.authHeaderValue,
+        },
       });
       const game = await gameResponse.json();
 
@@ -79,6 +88,7 @@ const resolvers: Resolvers<Context> = {
               'x-attempt-id': attemptId,
               'x-game-id': gameId,
               'x-owner-id': ownerId,
+              [env.authHeaderName]: env.authHeaderValue,
             },
             body: JSON.stringify({ from: edge, to: word }),
           }),
