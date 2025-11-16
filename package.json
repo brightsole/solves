@@ -14,7 +14,7 @@
   "author": "Drew Showalter <maelstroswim@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "start": "sst dev",
+    "start": "sst dev --stage preview",
     "deploy": "sst deploy --stage preview",
     "lint": "eslint --fix .",
     "test": "tsc --noEmit && jest",

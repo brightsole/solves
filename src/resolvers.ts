@@ -68,7 +68,7 @@ const resolvers: Resolvers<Context> = {
           },
         },
       );
-      const hops = await hopsResponse.json();
+      const hops = hopsResponse.ok ? await hopsResponse.json() : [];
       const gameResponse = await fetch(`${env.gamesApiUrl}/games/${gameId}`, {
         method: 'GET',
         headers: {
@@ -133,7 +133,7 @@ const resolvers: Resolvers<Context> = {
           .join('|'),
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as unknown as DBSolve;
+      } as DBSolve;
     },
   },
 

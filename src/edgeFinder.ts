@@ -1,36 +1,36 @@
 import type { Hop, Game } from './types';
 
-/**
- * Finds all available edge words given the current hops and game state.
- * Returns an array of words that are valid destinations.
- *
- * @param hops - Array of hops already taken in this attempt
- * @param game - The game being played with start/end words
- * @returns Array of valid destination words
- */
-export function findEdges(hops: Hop[], game: Game): string[] {
-  // Start with all game words
-  return hops.reduce(
-    (edges, hop) => {
-      // Parse linkKey to get canonical from->to direction
-      const [from, to] = hop.linkKey!.split('::');
+export const findEdges = (hops: Hop[], game: Game): string[] =>
+  hops.reduce(
+    (edges, { linkKey }) => {
+      if (!linkKey) return edges;
 
-      const fromIndex = edges.indexOf(from);
-      const toIndex = edges.indexOf(to);
+      const [from, to] = linkKey.split('::');
+      const hasFrom = edges.includes(from);
+      const hasTo = edges.includes(to);
 
-      // If hop.to was already in edges AND hop.from is in edges, we're closing a loop
-      if (toIndex !== -1 && fromIndex !== -1) {
-        // Remove both edges since we're closing the loop
-        return edges.filter((word) => word !== from && word !== to);
+      // both present → close loop, drop both
+      if (hasFrom && hasTo) {
+        return edges.filter((w) => w !== from && w !== to);
       }
 
-      // If hop.from is in edges, replace it with hop.to
-      if (fromIndex !== -1) {
-        edges[fromIndex] = to;
+      // exactly one present → swap it for the other (first occurrence only)
+      if (hasFrom || hasTo) {
+        const target = hasFrom ? from : to;
+        const replacement = hasFrom ? to : from;
+
+        let replaced = false;
+        return edges.map((w) => {
+          if (!replaced && w === target) {
+            replaced = true;
+            return replacement;
+          }
+          return w;
+        });
       }
 
+      // neither present → noop
       return edges;
     },
     [...game.words],
   );
-}

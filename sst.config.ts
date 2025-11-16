@@ -57,7 +57,7 @@ export default $config({
       description: `API Gateway URL for ${$app.name} ${$app.stage}`,
     });
     const hopsApiUrl = await aws.ssm.getParameter({
-      name: `/sst/words-service/${$app.stage}/api-url`,
+      name: `/sst/hops-service/${$app.stage}/api-url`,
     });
     const gamesApiUrl = await aws.ssm.getParameter({
       name: `/sst/games-service/${$app.stage}/api-url`,

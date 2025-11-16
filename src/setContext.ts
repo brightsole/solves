@@ -8,7 +8,7 @@ export const setContext: ContextFunction<
   [LambdaContextFunctionArgument],
   BaseContext
 > = async ({ event, context }): Promise<Context> => {
-  const userId = event.headers['x-user-id'];
+  const ownerId = event.headers['x-user-id'];
   const gameId = event.headers['x-game-id'];
   const attemptId = event.headers['x-attempt-id'];
   const solveController = startController();
@@ -29,7 +29,7 @@ export const setContext: ContextFunction<
 
   return {
     ...context,
-    ownerId: userId,
+    ownerId: ownerId,
     gameId,
     attemptId,
     event,
